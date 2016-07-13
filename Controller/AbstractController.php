@@ -67,6 +67,110 @@ abstract class AbstractController extends FOSRestController
         return $object;
     }
 
+    private function getKeyIfExists($array, $key){
+        if(isset($array[$key])){
+            return $array[$key];
+        }
+        return null;
+    }
+
+    /**
+     * получить queryBuilderы для запроса
+     *
+     * maybe, use new class instance instead?
+     *
+     * @param Request|array $search - параметры поиска
+     * @param $defaults - поиск по умолчанию // do we need it?
+     *
+     * @return  array - [countQuery, dataQuery: QueryBuilder]
+     */
+    public function getQueryBuilders($search, $defaults = []){
+
+        if($search instanceof Request){
+            $search = $search->query->all();
+        }
+
+        $search = array_merge($defaults, $search);
+
+        $em      = $this->getDoctrine()->getManager();
+        // data query retrieves objects
+        $dataQuery  = $em->createQueryBuilder();
+        $dataQuery->select('x');
+        $dataQuery->from($this->objectClass, 'x');
+
+        // count query gets total number of objects so pagination may work well
+        $countQuery = $em->createQueryBuilder();
+        $countQuery->select('count(x) as num');
+        $countQuery->from($this->objectClass, 'x');
+
+
+        $limit = $this->getKeyIfExists($search, 'limit');
+        if(is_numeric($limit)){
+            $dataQuery->setMaxResults( (int)$limit );
+        }
+        $start = $this->getKeyIfExists($search, 'start');
+        if(is_numeric($start)){
+            $dataQuery->setFirstResult( (int)$start );
+        }
+
+        // TODO: add support multiple orderby's
+        $orderby     = $this->getKeyIfExists($search, 'orderby');
+        $orderbydesc = $this->getKeyIfExists($search, 'orderbydesc');
+
+        $reflect = new \ReflectionClass($this->objectClass);
+        $properties = $reflect->getProperties();
+        foreach ($properties as $property) {
+            $propertyName = $property->getName();
+
+            if(array_key_exists($propertyName, $search)){
+                $value = $search[$propertyName];
+
+                if(is_string($value)){
+                    $value = explode("|", $value); // check if it uses "1|2|3" syntax
+                    if(count($value) == 1){ // otherwise
+                        $value = $value[0]; // convert to string again
+                    }
+                }
+
+                if(is_null($value)){
+                    // you can search by null too. that is why I use array_key_exists instead of isset
+                    $andWhere = "x.$propertyName IS NULL";
+                } else if(is_array($value)){
+                    $andWhere = "x.$propertyName IN(:$propertyName)";
+                } else { // string or number or bool
+                    $andWhere = "x.$propertyName  = :$propertyName ";
+                }
+
+                $countQuery->andWhere($andWhere);
+                $dataQuery->andWhere($andWhere);
+
+                if(isset($value)){
+                    $countQuery->setParameter($propertyName, $value);
+                    $dataQuery->setParameter($propertyName, $value);
+                }
+            } // end if exist
+
+            if ($orderby == $propertyName) {
+                $countQuery->orderBy("x.$propertyName", 'ASC');
+                $dataQuery->orderBy("x.$propertyName", 'ASC');
+            } elseif ($orderbydesc == $propertyName) {
+                $countQuery->orderBy("x.$propertyName", 'DESC');
+                $dataQuery->orderBy("x.$propertyName", 'DESC');
+            }
+
+        } // end foreach possible properties
+
+        // maybe, turn it into class?
+        return [
+            'dataQuery' => $dataQuery,
+            'countQuery' => $countQuery,
+        ];
+    }
+
+
+
+
+
     /**
      * Получить список объектов
      *

@@ -27,7 +27,7 @@ abstract class AbstractController extends FOSRestController
     /**
      * Создание обьекта
      *
-     * @param   array   $requestArray
+     * @param   array $requestArray
      *
      * @return  Object
      */
@@ -54,11 +54,11 @@ abstract class AbstractController extends FOSRestController
      *
      * @return  Object
      */
-    public function getObject($keyValue = FALSE, $findArray = [])
+    public function getObject($keyValue = false, $findArray = [])
     {
         $repository   = $this->getObjectRepository();
         $findFunction = 'findOneBy';
-        ($keyValue === FALSE) ?: $findArray[$this->objectKey] = $keyValue;
+        ($keyValue === false) ?: $findArray[$this->objectKey] = $keyValue;
         $object = $repository->$findFunction($findArray);
         if (!$object) {
             throw new HttpException(404, 'No object this key (' . $keyValue . ').');
@@ -82,17 +82,42 @@ abstract class AbstractController extends FOSRestController
         $reflect    = new \ReflectionClass($this->objectClass);
         $properties = $reflect->getProperties();
         $orderArray = [];
-        $limit      = NULL;
-        $offset     = NULL;
+        $limit      = null;
+        $offset     = null;
+
+        $em         = $this->getDoctrine()->getManager();
+        $countQuery = $em->createQueryBuilder();
+        $countQuery->select('count(x) as num');
+        $countQuery->from($this->objectClass, 'x');
+
+
+        // append find from $findArray to countQuery
+        foreach ($findArray as $key => $value) {
+            if(is_array($value)){
+                $countQuery->andWhere("x.$key IN(:$key)");
+            } else {
+                $countQuery->andWhere("x.$key  = :$key ");
+            }
+
+            $countQuery->setParameter($key, $value);
+        }
 
         foreach ($properties as $property) {
-            if ($request->query->get($property->getName(), FALSE)) {
-                $findArray[$property->getName()] = explode("|", $request->query->get($property->getName()));
+            $propertyName = $property->getName();
+            if ($request->query->get($propertyName, false)) {
+                $findArray[$propertyName] = explode("|", $request->query->get($propertyName));
+                if(is_array($findArray[$propertyName])){
+                    $countQuery->andWhere("x.$propertyName IN(:$propertyName)");
+                } else {
+                    $countQuery->andWhere("x.$propertyName  = :$propertyName ");
+                }
+
+                $countQuery->setParameter($propertyName, $findArray[$propertyName]);
             }
-            if ($request->query->get("orderby") == $property->getName()) {
-                $orderArray[$property->getName()] = 'ASC';
-            } elseif ($request->query->get("orderbydesc") == $property->getName()) {
-                $orderArray[$property->getName()] = 'DESC';
+            if ($request->query->get("orderby") == $propertyName) {
+                $orderArray[$propertyName] = 'ASC';
+            } elseif ($request->query->get("orderbydesc") == $propertyName) {
+                $orderArray[$propertyName] = 'DESC';
             }
         }
         if (preg_match('/^[0-9]+$/', $request->query->get("limit"))) {
@@ -104,26 +129,24 @@ abstract class AbstractController extends FOSRestController
         ) {
             $offset = (int)$request->query->get("start");
         }
-
+        $start = microtime(true);
         $objects = $repository->findBy($findArray, $orderArray, $limit, $offset);
-        if (count($objects) <= 0) {
-            $response['items'] = [];
-            $response['count'] = 0;
+        $response['_query_time'] = microtime(true) - $start;
 
-            return $response;
-        }
-        $count           = count($objects);
+        $start = microtime(true);
+        $response['count'] = +$countQuery->getQuery()->getResult()[0]['num'];
+        $response['_count_query_time'] = microtime(true) - $start;
+
         $response['items'] = $objects;
-        $response['count'] = $count;
+
 
         return $response;
     }
-
     /**
      * Обновление обьекта
      *
-     * @param $requestArray
-     * @param $keyValue
+     * @param      $requestArray
+     * @param      $keyValue
      * @param null $beforeFunction
      * @param null $afterFunction
      *
@@ -136,13 +159,19 @@ abstract class AbstractController extends FOSRestController
         $keyValue,
         $beforeFunction = null,
         $afterFunction = null
-    )
-    {
+    ) {
 
-        $em           = $this->getDoctrine()->getManager();
-        $repository   = $this->getObjectRepository();
-        $findFunction = 'findOneBy' . ucfirst($this->objectKey);
-        $object       = $repository->$findFunction($keyValue);
+        $em         = $this->getDoctrine()->getManager();
+        $repository = $this->getObjectRepository();
+
+        if (is_string($this->objectKey)) {
+            $findFunction = 'findOneBy' . ucfirst($this->objectKey);
+            $object       = $repository->$findFunction($keyValue);
+        } else if (is_array($this->objectKey)) {
+            // @from http://stackoverflow.com/a/21524085/6076531
+            $object = $repository->findOneBy($this->objectKey);
+        }
+
 
         if (!is_object($object)) {
             throw new HttpException(404, 'No object this key (' . $keyValue . ').');
@@ -171,8 +200,8 @@ abstract class AbstractController extends FOSRestController
     /**
      * Обновление или создание обьекта
      *
-     * @param $requestArray
-     * @param $keyValue
+     * @param      $requestArray
+     * @param      $keyValue
      * @param null $beforeFunction
      * @param null $afterFunction
      *
@@ -183,14 +212,19 @@ abstract class AbstractController extends FOSRestController
     public function updateOrCreateObject(
         $requestArray,
         $keyValue,
-        $beforeFunction = NULL,
-        $afterFunction = NULL
-    )
-    {
-        $em           = $this->getDoctrine()->getManager();
-        $repository   = $this->getObjectRepository();
-        $findFunction = 'findOneBy' . ucfirst($this->objectKey);
-        $object       = $repository->$findFunction($keyValue);
+        $beforeFunction = null,
+        $afterFunction = null
+    ) {
+        $em         = $this->getDoctrine()->getManager();
+        $repository = $this->getObjectRepository();
+
+        if (is_string($this->objectKey)) {
+            $findFunction = 'findOneBy' . ucfirst($this->objectKey);
+            $object       = $repository->$findFunction($keyValue);
+        } else if (is_array($this->objectKey)) {
+            // @from http://stackoverflow.com/a/21524085/6076531
+            $object = $repository->findOneBy($this->objectKey);
+        }
 
         if (!is_null($beforeFunction)) {
             call_user_func($beforeFunction, $object);
@@ -219,12 +253,12 @@ abstract class AbstractController extends FOSRestController
     /**
      * Удаление обьекта
      *
-     * @param   $keyValue
-     * @param   array   $arrayClass
-     * @param   array   $arrayField
-     * @param   array   $arrayCallBack
-     * @param   null    $beforeFunction
-     * @param   null    $afterFunction
+     * @param         $keyValue
+     * @param   array $arrayClass
+     * @param   array $arrayField
+     * @param   array $arrayCallBack
+     * @param   null  $beforeFunction
+     * @param   null  $afterFunction
      *
      * @return  array
      *
@@ -235,10 +269,9 @@ abstract class AbstractController extends FOSRestController
         $arrayClass = [],
         $arrayField = [],
         $arrayCallBack = [],
-        $beforeFunction = NULL,
-        $afterFunction = NULL
-    )
-    {
+        $beforeFunction = null,
+        $afterFunction = null
+    ) {
         $em           = $this->getDoctrine()->getManager();
         $repository   = $this->getObjectRepository();
         $findFunction = 'findOneBy' . ucfirst($this->objectKey);// Зачем конкатанация objectKey ?
@@ -250,7 +283,7 @@ abstract class AbstractController extends FOSRestController
         if (!is_null($beforeFunction)) {
             call_user_func($beforeFunction, $object);
         }
-        $object->Del = TRUE;
+        $object->Del = true;
 
         //ищем зависимые объекты
         $countClass = count($arrayClass);
@@ -286,12 +319,12 @@ abstract class AbstractController extends FOSRestController
     /**
      * Заполнение объекта из массива
      *
-     * @param   array           $requestArray
-     * @param   boolean|Object  $object
+     * @param   array          $requestArray
+     * @param   boolean|Object $object
      *
      * @return  Object
      */
-    public function arrayToObject($requestArray, $object = FALSE)
+    public function arrayToObject($requestArray, $object = false)
     {
         if (!is_array($requestArray)) {
             throw new HttpException(400, 'Error object create');
@@ -302,26 +335,32 @@ abstract class AbstractController extends FOSRestController
         $namespace  = $reflect->getNamespaceName();
         $properties = $reflect->getProperties();
 
-        if ($object === FALSE) {
+        if ($object === false) {
             $object = new $this->objectClass();
         }
 
         //устанавливаем значения
         foreach ($properties as $property) {
             $propertyName = CamelCase::fromCamelCase($property->getName());
-            $value    = isset($requestArray[$propertyName]) ? $requestArray[$propertyName] : NULL;
-            $property->setAccessible(TRUE);
+            if(!array_key_exists($propName, $requestArray)){
+                continue;
+            }
+            $value        = $requestArray[$propertyName];
+            $property->setAccessible(true);
 
             if (preg_match('/@var\s+([^\s]+)/', $property->getDocComment(), $matches)) {
                 list(, $type) = $matches;
 
-                $arrayCollection = NULL;
-                if(preg_match('/@todo\s+([^\s]+)/', $property->getDocComment(), $todo)) {
+                $arrayCollection = null;
+                if (preg_match('/@todo\s+([^\s]+)/', $property->getDocComment(), $todo)) {
                     list(, $arrayCollection) = $matches;
                 }
 
                 if (class_exists($namespace . "\\" . $type)) {
                     $type = $namespace . "\\" . $type;
+                }
+                if(is_null($value)){
+                    $prop->setValue($object, $value);
                 }
 
                 if ($type == '\DateTime' && !is_null($value) && !is_object($value)) {
@@ -332,27 +371,27 @@ abstract class AbstractController extends FOSRestController
                  * Для каждого property который указан как ArrayCollection
                  * должен быть setter который вызывается с массивом объектов в качестве параметра
                  */
-                if(!is_null($arrayCollection) && is_array($value) && count($value) > 0) {
+                if (!is_null($arrayCollection) && is_array($value) && count($value) > 0) {
                     $targetReflect    = new \ReflectionClass($type);
                     $targetProperties = $targetReflect->getProperties();
                     // ищем нужное property
-                    foreach($targetProperties as $targetProperty) {
-                        if(preg_match('/@var\s+([^\s]+)/', $targetProperty->getDocComment(), $ownerMatches)) {
+                    foreach ($targetProperties as $targetProperty) {
+                        if (preg_match('/@var\s+([^\s]+)/', $targetProperty->getDocComment(), $ownerMatches)) {
                             $ownerType = $ownerMatches[1];
-                            if($ownerType == '\\' . $reflect->getName()) {
+                            if ($ownerType == '\\' . $reflect->getName()) {
                                 $this->objectClass = $type;
-                                $targetSetterName = ucfirst($property->getName());
+                                $targetSetterName  = ucfirst($property->getName());
 
                                 //заполняем массив объектами
                                 $itemsObjects = [];
-                                foreach($value as $itemId) {
+                                foreach ($value as $itemId) {
                                     $itemsObjects[] = $this->getObject($itemId);
                                 }
                                 try {
                                     // вызываем setter
                                     $method = $reflect->getMethod('set' . $targetSetterName);
                                     $method->invoke($object, $itemsObjects);
-                                } catch(\ReflectionException $e) {
+                                } catch (\ReflectionException $e) {
                                     throw new HttpException(400, 'Mistake when filling object');
                                 }
                             }
@@ -389,6 +428,7 @@ abstract class AbstractController extends FOSRestController
      * Заполнение временного обьекта из массива
      *
      * @param   $requestArray
+     *
      * @return  Object
      */
     public function tempObject($requestArray)
@@ -400,6 +440,7 @@ abstract class AbstractController extends FOSRestController
      * Валидация обьекта (Entity)
      *
      * @param   Object $object
+     *
      * @return  boolean
      */
     protected function validate($object)
@@ -407,10 +448,10 @@ abstract class AbstractController extends FOSRestController
         $validator = $this->get('validator');
         $errors    = $validator->validate($object);
         if (count($errors) > 0) {
-            throw new HttpException(400, 'Bad request (' . print_r($errors->get(0)->getMessage(), TRUE) . ').');
+            throw new HttpException(400, 'Bad request (' . print_r($errors->get(0)->getMessage(), true) . ').');
         }
 
-        return TRUE;
+        return true;
     }
 
     /**
@@ -460,7 +501,7 @@ abstract class AbstractController extends FOSRestController
         if ('json' !== $request->getContentType()) {
             throw new HttpException(400, 'Invalid content type');
         }
-        $data = json_decode($request->getContent(), TRUE);
+        $data = json_decode($request->getContent(), true);
 
         if (json_last_error() !== JSON_ERROR_NONE || $request->getContent() == '') {
             throw new HttpException(400, 'Invalid content type');

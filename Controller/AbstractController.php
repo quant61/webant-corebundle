@@ -196,11 +196,12 @@ abstract class AbstractController extends FOSRestController
 
     }
 
-
-
-
-
-
+    public function execQueryBuildersPair($pair){
+        return [
+            'items' => $pair['dataQuery']->getQuery()->getResult(),
+            'count' => (int)$pair['countQuery']->getQuery()->getSingleScalarResult(),
+        ];
+    }
 
 
     /**

@@ -67,11 +67,12 @@ abstract class AbstractController extends FOSRestController
         return $object;
     }
 
-    private function getKeyIfExists($array, $key){
-        if(isset($array[$key])){
+    public function getKeyIfExists($array, $key, $default = null){
+        // missing key is casted to default, but null key isn't
+        if(array_key_exists($key, $array)){
             return $array[$key];
         }
-        return null;
+        return $default;
     }
 
     /**
@@ -86,12 +87,13 @@ abstract class AbstractController extends FOSRestController
      */
     public function getQueryBuilders($search, $defaults = []){
 
+        // fix search
         if($search instanceof Request){
             $search = $search->query->all();
         }
-
         $search = array_merge($defaults, $search);
 
+        // init query builders
         $em      = $this->getDoctrine()->getManager();
         // data query retrieves objects
         $dataQuery  = $em->createQueryBuilder();
@@ -103,7 +105,7 @@ abstract class AbstractController extends FOSRestController
         $countQuery->select('count(x) as num');
         $countQuery->from($this->objectClass, 'x');
 
-
+        // append pagination
         $limit = $this->getKeyIfExists($search, 'limit');
         if(is_numeric($limit)){
             $dataQuery->setMaxResults( (int)$limit );
@@ -113,14 +115,49 @@ abstract class AbstractController extends FOSRestController
             $dataQuery->setFirstResult( (int)$start );
         }
 
+        // append query
+        $this->appendSearchToQueryBuilder($dataQuery, $search);
+        $this->appendSearchToQueryBuilder($countQuery, $search);
+
+        // maybe, turn it into class?
+        return [
+            'dataQuery' => $dataQuery,
+            'countQuery' => $countQuery,
+        ];
+    }
+
+
+    /**
+     * appends search from array or request to queryBuilder.
+     * it can also append params of subobject
+     *
+     * @param $qb
+     * @param array|Request $search
+     * @param array $config
+     *    $config = [
+     *      'alias' => (string) alias of object or subobject. could be used for joined
+     *      'objectClass' => (string) objectClass of checked object
+     *    ]
+     */
+    public function appendSearchToQueryBuilder($qb, $search, $config = []){
+        $objectClass = $this->getKeyIfExists($config, 'objectClass', $this->objectClass);
+        $alias = $this->getKeyIfExists($config, 'alias', 'x');
+
+        if($search instanceof Request){
+            $search = $search->query->all();
+        }
+
         // TODO: add support multiple orderby's
         $orderby     = $this->getKeyIfExists($search, 'orderby');
         $orderbydesc = $this->getKeyIfExists($search, 'orderbydesc');
 
-        $reflect = new \ReflectionClass($this->objectClass);
+        $reflect = new \ReflectionClass($objectClass);
         $properties = $reflect->getProperties();
+
         foreach ($properties as $property) {
             $propertyName = $property->getName();
+            $fullPropertyName = "${alias}.$propertyName";
+            $parameterName  = "${alias}___$propertyName";
 
             if(array_key_exists($propertyName, $search)){
                 $value = $search[$propertyName];
@@ -134,38 +171,33 @@ abstract class AbstractController extends FOSRestController
 
                 if(is_null($value)){
                     // you can search by null too. that is why I use array_key_exists instead of isset
-                    $andWhere = "x.$propertyName IS NULL";
+                    $andWhere = "$fullPropertyName IS NULL";
                 } else if(is_array($value)){
-                    $andWhere = "x.$propertyName IN(:$propertyName)";
+                    $andWhere = "$fullPropertyName IN(:$parameterName)";
                 } else { // string or number or bool
-                    $andWhere = "x.$propertyName  = :$propertyName ";
+                    $andWhere = "$fullPropertyName  = :$parameterName ";
                 }
 
-                $countQuery->andWhere($andWhere);
-                $dataQuery->andWhere($andWhere);
+                $qb->andWhere($andWhere);
 
                 if(isset($value)){
-                    $countQuery->setParameter($propertyName, $value);
-                    $dataQuery->setParameter($propertyName, $value);
+                    $qb->setParameter($parameterName, $value);
                 }
             } // end if exist
 
             if ($orderby == $propertyName) {
-                $countQuery->orderBy("x.$propertyName", 'ASC');
-                $dataQuery->orderBy("x.$propertyName", 'ASC');
+                $qb->orderBy("$fullPropertyName", 'ASC');
             } elseif ($orderbydesc == $propertyName) {
-                $countQuery->orderBy("x.$propertyName", 'DESC');
-                $dataQuery->orderBy("x.$propertyName", 'DESC');
+                $qb->orderBy("$parameterName", 'DESC');
             }
-
         } // end foreach possible properties
 
-        // maybe, turn it into class?
-        return [
-            'dataQuery' => $dataQuery,
-            'countQuery' => $countQuery,
-        ];
+        return $qb;
+
     }
+
+
+
 
 
 

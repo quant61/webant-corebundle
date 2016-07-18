@@ -188,7 +188,7 @@ abstract class AbstractController extends FOSRestController
             if ($orderby == $propertyName) {
                 $qb->orderBy("$fullPropertyName", 'ASC');
             } elseif ($orderbydesc == $propertyName) {
-                $qb->orderBy("$parameterName", 'DESC');
+                $qb->orderBy("$fullPropertyName", 'DESC');
             }
         } // end foreach possible properties
 

@@ -67,6 +67,7 @@ abstract class AbstractController extends FOSRestController
         return $object;
     }
 
+    // TODO: move to helpers
     public function getKeyIfExists($array, $key, $default = null){
         // missing key is casted to default, but null key isn't
         if(array_key_exists($key, $array)){

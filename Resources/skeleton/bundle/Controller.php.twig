@@ -79,7 +79,7 @@ class {{ bundle_basename }}Controller extends AbstractController
 
     /**
     * @ApiDoc(
-    * description="Получение списка {{ bundle_basename }}s",
+    * description="Получение списка {{ bundle_pluralname }}s",
     * section = "{{ bundle_basename }}",
     * filters={
     *         {"name"="limit", "dataType"="integer"},
@@ -96,7 +96,7 @@ class {{ bundle_basename }}Controller extends AbstractController
     *     }
     * )
     */
-    public function get{{ bundle_basename }}sAction(Request $request)
+    public function get{{ bundle_pluralname }}Action(Request $request)
     {
         return parent::getObjectGroup(parent::getListObject($request), 'get{{ bundle_basename }}');
     }

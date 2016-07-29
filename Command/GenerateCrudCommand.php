@@ -115,7 +115,8 @@ EOT
         }
 
         $generator = $this->getGenerator();
-        $generator->generate($namespace, $bundle, $dir, $format, $structure);
+        $error = $generator->generate($namespace, $bundle, $dir, $format, $structure);
+
 
         $output->writeln('Generating the bundle code: <info>OK</info>');
 

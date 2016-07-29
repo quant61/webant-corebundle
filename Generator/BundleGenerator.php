@@ -13,7 +13,7 @@ namespace WebAnt\CoreBundle\Generator;
 
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\DependencyInjection\Container;
-
+use Doctrine\Common\Inflector\Inflector;
 /**
  * Generates a bundle.
  *
@@ -46,11 +46,16 @@ class BundleGenerator extends Generator
         }
 
         $basename = substr($bundle, 0, -6);
+        $inflector = new Inflector();
+        $pluralname = $inflector->pluralize($basename);
+        // TODO: what if plural and sigular are the same?
+
         $parameters = array(
             'namespace' => $namespace,
             'bundle'    => $bundle,
             'format'    => $format,
             'bundle_basename' => $basename,
+            'bundle_pluralname' => $pluralname,
             'extension_alias' => Container::underscore($basename),
         );
 
@@ -67,6 +72,10 @@ class BundleGenerator extends Generator
 
         if ('annotation' != $format) {
             $this->renderFile('bundle/routing.'.$format.'.twig', $dir.'/Resources/config/routing.'.$format, $parameters);
+        }
+
+        if($basename === $pluralname){
+            return new \Exception('singular and plural are same, so generated bundle will not work');
         }
     }
 }

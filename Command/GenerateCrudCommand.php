@@ -281,7 +281,7 @@ EOT
                 'Determine the format to use for the generated configuration.',
                 '',
             ));
-            $question = new Question($questionHelper->getQuestion('Configuration format (yml, xml, php, or annotation)', $input->getOption('format')), $input->getOption('format'));
+            $question = new Question($questionHelper->getQuestion('Configuration format (yml, xml, php, or annotation)', 'yml'), 'yml');
             $question->setValidator(
                 array('Sensio\Bundle\GeneratorBundle\Command\Validators', 'validateFormat')
             );

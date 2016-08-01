@@ -43,22 +43,15 @@ class {{ bundle_basename }} {
      */
     private $dateCreate;
 
+    {% for field in fields %}
     /**
-     * @var string
-     *
-     * @ORM\Column(name="name", type="string", length=45, nullable=false)
-     * @Groups({"get{{ bundle_basename }}"})
-     */
-    protected $name;
-
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="description", type="string", nullable=false)
-     * @Groups({"get{{ bundle_basename }}"})
-     */
-    protected $description;
-
+    * @var string
+    *
+    * @ORM\Column(name="{{ field.name }}", type="string", length=45, nullable=false)
+    * @Groups({"get{{ bundle_basename }}"})
+    */
+    protected ${{ field.name }};
+    {% endfor %}
     /**
      * @return mixed
      */
@@ -75,35 +68,21 @@ class {{ bundle_basename }} {
         $this->id = $id;
     }
 
+    {% for field in fields %}
     /**
-     * @return string
-     */
-    public function getName()
+    * @return string
+    */
+    public function get{{ field.name | capitalize }}()
     {
-        return $this->name;
+        return $this->{{ field.name }};
     }
 
     /**
-     * @param string $name
-     */
-    public function setName($name)
+    * @param string ${{ field.name }}
+    */
+    public function set{{ field.name | capitalize }}(${{ field.name }})
     {
-        $this->name = $name;
+        $this->{{ field.name }} = ${{ field.name }};
     }
-
-    /**
-     * @return string
-     */
-    public function getDescription()
-    {
-        return $this->description;
-    }
-
-    /**
-     * @param string $description
-     */
-    public function setDescription($description)
-    {
-        $this->description = $description;
-    }
+    {% endfor %}
 }

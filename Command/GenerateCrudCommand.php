@@ -45,6 +45,7 @@ class GenerateCrudCommand extends GeneratorCommand
                 new InputOption('bundle-name', '', InputOption::VALUE_REQUIRED, 'The optional bundle name'),
                 new InputOption('format', '', InputOption::VALUE_REQUIRED, 'Use the format for configuration files (php, xml, yml, or annotation)'),
                 new InputOption('structure', '', InputOption::VALUE_NONE, 'Whether to generate the whole directory structure'),
+                new InputOption('fields', '', InputOption::VALUE_REQUIRED, 'Comma separated list of entity fields'),
             ))
             ->setDescription('Generates a bundle CRUD')
             ->setHelp(<<<EOT
@@ -108,6 +109,16 @@ EOT
         $format = Validators::validateFormat($input->getOption('format'));
         $structure = $input->getOption('structure');
 
+        $fields = $input->getOption('fields');
+        $fields = explode(',',$fields);
+        $fields = array_map(function($name){
+            $name = trim($name);
+            return [
+                'name' => $name
+            ];
+        }, $fields);
+
+
         $questionHelper->writeSection($output, 'Bundle generation');
 
         if (!$this->getContainer()->get('filesystem')->isAbsolutePath($dir)) {
@@ -115,7 +126,7 @@ EOT
         }
 
         $generator = $this->getGenerator();
-        $error = $generator->generate($namespace, $bundle, $dir, $format, $structure);
+        $error = $generator->generate($namespace, $bundle, $dir, $format, $structure, $fields);
 
 
         $output->writeln('Generating the bundle code: <info>OK</info>');
@@ -233,6 +244,27 @@ EOT
             });
             $dir = $questionHelper->ask($input, $output, $question);
             $input->setOption('dir', $dir);
+        }
+
+        // fields list
+        $fields = null;
+        try {
+            $fields = $input->getOption('fields');
+        } catch (\Exception $error) {
+            $output->writeln($questionHelper->getHelperSet()->get('formatter')->formatBlock($error->getMessage(), 'error'));
+        }
+
+        if (null === $fields) {
+            $fields = 'name,description';
+            $output->writeln(array(
+                '',
+                'What fields will new Entity have?',
+                'You can change list of fields after create, but it needs more time',
+                '',
+            ));
+            $question = new Question($questionHelper->getQuestion('Fields list', $fields), $fields);
+            $fields = $questionHelper->ask($input, $output, $question);
+            $input->setOption('fields', $fields);
         }
 
         // format

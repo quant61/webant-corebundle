@@ -29,7 +29,7 @@ class BundleGenerator extends Generator
         $this->filesystem = $filesystem;
     }
 
-    public function generate($namespace, $bundle, $dir, $format, $structure)
+    public function generate($namespace, $bundle, $dir, $format, $structure, $fields)
     {
         $dir .= '/'.strtr($namespace, '\\', '/');
         if (file_exists($dir)) {
@@ -54,6 +54,7 @@ class BundleGenerator extends Generator
             'namespace' => $namespace,
             'bundle'    => $bundle,
             'format'    => $format,
+            'fields'    => $fields,
             'bundle_basename' => $basename,
             'bundle_pluralname' => $pluralname,
             'extension_alias' => Container::underscore($basename),

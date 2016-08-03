@@ -23,6 +23,8 @@ use Sensio\Bundle\GeneratorBundle\Manipulator\RoutingManipulator;
 use Sensio\Bundle\GeneratorBundle\Command\Helper\QuestionHelper;
 use WebAnt\CoreBundle\Command\GeneratorCommand;
 use Sensio\Bundle\GeneratorBundle\Command\Validators;
+use WebAnt\CoreBundle\Component\Helpers;
+
 
 /**
  * Generates CRUD bundles.
@@ -30,6 +32,7 @@ use Sensio\Bundle\GeneratorBundle\Command\Validators;
  *
  * @author Fabien Potencier <fabien@symfony.com>
  * reworked Yuri Kovalev <u@webant.ru>
+ * reworked Ivan Shevchenko <quant61@mail.ru>
  */
 class GenerateCrudCommand extends GeneratorCommand
 {
@@ -45,7 +48,9 @@ class GenerateCrudCommand extends GeneratorCommand
                 new InputOption('bundle-name', '', InputOption::VALUE_REQUIRED, 'The optional bundle name'),
                 new InputOption('format', '', InputOption::VALUE_REQUIRED, 'Use the format for configuration files (php, xml, yml, or annotation)'),
                 new InputOption('structure', '', InputOption::VALUE_NONE, 'Whether to generate the whole directory structure'),
-                new InputOption('fields', '', InputOption::VALUE_REQUIRED, 'Comma separated list of entity fields'),
+                new InputOption('fields', '', InputOption::VALUE_REQUIRED, 'Comma separated list of entity fields. Ignored if fields-json-file is specified'),
+                new InputOption('fields-json-file', '', InputOption::VALUE_OPTIONAL, 'Path to json file containing fields description'),
+                new InputOption('auto', '', InputOption::VALUE_NONE, 'Ask less questions (good for run in scripts)'),
             ))
             ->setDescription('Generates a bundle CRUD')
             ->setHelp(<<<EOT
@@ -82,7 +87,7 @@ EOT
     {
         $questionHelper = $this->getQuestionHelper();
 
-        if ($input->isInteractive()) {
+        if ($input->isInteractive() && !$input->getOption('auto')) {
             if (!$questionHelper->ask($input, $output, new ConfirmationQuestion($questionHelper->getQuestion('Do you confirm generation', 'yes', '?'), true))) {
                 $output->writeln('<error>Command aborted</error>');
 
@@ -118,6 +123,7 @@ EOT
             ];
         }, $fields);
 
+        $fields = array_map(array($this, 'fixField'), $fields);
 
         $questionHelper->writeSection($output, 'Bundle generation');
 
@@ -126,8 +132,9 @@ EOT
         }
 
         $generator = $this->getGenerator();
-        $error = $generator->generate($namespace, $bundle, $dir, $format, $structure, $fields);
 
+        $config = compact('namespace', 'bundle', 'dir', 'format', 'structure', 'fields', 'fieldsFromJson');
+        $error = $generator->generate($config);
 
         $output->writeln('Generating the bundle code: <info>OK</info>');
 
@@ -150,6 +157,7 @@ EOT
     {
         $questionHelper = $this->getQuestionHelper();
         $questionHelper->writeSection($output, 'Welcome to the WebAnt CRUD generator');
+        $auto = $input->getOption('auto');
 
         // namespace
         $namespace = null;
@@ -254,6 +262,14 @@ EOT
             $output->writeln($questionHelper->getHelperSet()->get('formatter')->formatBlock($error->getMessage(), 'error'));
         }
 
+        $fieldsJsonFile = $input->getOption('fields-json-file');
+        if(is_string($fieldsJsonFile)){
+            $data = $this->fieldsFromJsonFile($fieldsJsonFile);
+            if(is_array($data)){
+                $fields = $data;
+            }
+        }
+
         if (null === $fields) {
             $fields = 'name,description';
             $output->writeln(array(
@@ -273,6 +289,11 @@ EOT
             $format = $input->getOption('format') ? Validators::validateFormat($input->getOption('format')) : null;
         } catch (\Exception $error) {
             $output->writeln($questionHelper->getHelperSet()->get('formatter')->formatBlock($error->getMessage(), 'error'));
+        }
+
+        if($auto && is_null($format)){
+            $format = 'yml';
+            $input->setOption('format', $format);
         }
 
         if (null === $format) {
@@ -298,11 +319,16 @@ EOT
         ));
 
         $structure = $input->getOption('structure');
-        $question = new ConfirmationQuestion($questionHelper->getQuestion('Do you want to generate the whole directory structure', 'no', '?'), false);
-        if (!$structure && $questionHelper->ask($input, $output, $question)) {
-            $structure = true;
+
+        if($auto){
+
+        } else {
+            $question = new ConfirmationQuestion($questionHelper->getQuestion('Do you want to generate the whole directory structure', 'no', '?'), false);
+            if (!$structure && $questionHelper->ask($input, $output, $question)) {
+                $structure = true;
+            }
+            $input->setOption('structure', $structure);
         }
-        $input->setOption('structure', $structure);
 
         // summary
         $output->writeln(array(
@@ -312,6 +338,43 @@ EOT
             sprintf("You are going to generate a \"<info>%s\\%s</info>\" bundle\nin \"<info>%s</info>\" using the \"<info>%s</info>\" format.", $namespace, $bundle, $dir, $format),
             '',
         ));
+    }
+
+    private function fieldsFromJsonFile($path)
+    {
+        $questionHelper = $this->getQuestionHelper();
+        if (!file_exists($path)) {
+            return false;
+        }
+        $json = file_get_contents($path);
+        try{
+            $data = json_decode($json, true);
+        } catch(\Exception $e){
+            return false;
+        }
+
+        return $data;
+    }
+
+    private function fixField($field){
+
+        $required = Helpers::getKeyIfExists($field, 'required', false);
+        $field['nullable'] = !$required;
+
+        $type = Helpers::getKeyIfExists($field, 'type', null);
+        $field['varType'] = 'string';
+        $field['ormType'] = 'string';
+
+        if(in_array($type, ['number', 'float'])){
+            $field['varType'] = 'number';
+            $field['ormType'] = 'number';
+        }
+
+        if($type === 'text'){
+            $field['ormType'] = 'text';
+        }
+
+        return $field;
     }
 
     protected function checkAutoloader(OutputInterface $output, $namespace, $bundle, $dir)
@@ -329,7 +392,7 @@ EOT
     protected function updateKernel(QuestionHelper $questionHelper, InputInterface $input, OutputInterface $output, KernelInterface $kernel, $namespace, $bundle)
     {
         $auto = true;
-        if ($input->isInteractive()) {
+        if ($input->isInteractive() && !$input->getOption('auto')) {
             $question = new ConfirmationQuestion($questionHelper->getQuestion('Confirm automatic update of your Kernel', 'yes', '?'), true);
             $auto = $questionHelper->ask($input, $output, $question);
         }
@@ -361,7 +424,7 @@ EOT
     protected function updateRouting(QuestionHelper $questionHelper, InputInterface $input, OutputInterface $output, $bundle, $format)
     {
         $auto = true;
-        if ($input->isInteractive()) {
+        if ($input->isInteractive() && !$input->getOption('auto')) {
             $question = new ConfirmationQuestion($questionHelper->getQuestion('Confirm automatic update of the Routing', 'yes', '?'), true);
             $auto = $questionHelper->ask($input, $output, $question);
         }

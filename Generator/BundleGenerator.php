@@ -29,8 +29,17 @@ class BundleGenerator extends Generator
         $this->filesystem = $filesystem;
     }
 
-    public function generate($namespace, $bundle, $dir, $format, $structure, $fields)
+//    public function generate($namespace, $bundle, $dir, $format, $structure, $fields)
+    public function generate($config)
     {
+        extract($config);
+        /** @var $namespace string */
+        /** @var $bundle string */
+        /** @var $dir string */
+        /** @var $format string */
+        /** @var $structure boolean */
+        /** @var $fields string */
+
         $dir .= '/'.strtr($namespace, '\\', '/');
         if (file_exists($dir)) {
             if (!is_dir($dir)) {
@@ -49,6 +58,8 @@ class BundleGenerator extends Generator
         $inflector = new Inflector();
         $pluralname = $inflector->pluralize($basename);
         // TODO: what if plural and sigular are the same?
+
+
 
         $parameters = array(
             'namespace' => $namespace,

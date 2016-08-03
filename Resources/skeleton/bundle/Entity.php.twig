@@ -45,13 +45,14 @@ class {{ bundle_basename }} {
 
     {% for field in fields %}
     /**
-    * @var string
+    * @var {{ field.varType }}
     *
-    * @ORM\Column(name="{{ field.name }}", type="string", length=45, nullable=false)
+    * @ORM\Column(name="{{ field.name }}", type="{{ field.ormType }}", nullable={{ field.nullable }})
     * @Groups({"get{{ bundle_basename }}"})
     */
     protected ${{ field.name }};
     {% endfor %}
+
     /**
      * @return mixed
      */
@@ -70,7 +71,7 @@ class {{ bundle_basename }} {
 
     {% for field in fields %}
     /**
-    * @return string
+    * @return {{ field.varType }}
     */
     public function get{{ field.name | capitalize }}()
     {

@@ -115,14 +115,15 @@ EOT
         $structure = $input->getOption('structure');
 
         $fields = $input->getOption('fields');
-        $fields = explode(',',$fields);
-        $fields = array_map(function($name){
-            $name = trim($name);
-            return [
-                'name' => $name
-            ];
-        }, $fields);
-
+        if(is_string($fields)){
+            $fields = explode(',',$fields);
+            $fields = array_map(function($name){
+                $name = trim($name);
+                return [
+                    'name' => $name
+                ];
+            }, $fields);
+        }
         $fields = array_map(array($this, 'fixField'), $fields);
 
         $questionHelper->writeSection($output, 'Bundle generation');
@@ -267,6 +268,7 @@ EOT
             $data = $this->fieldsFromJsonFile($fieldsJsonFile);
             if(is_array($data)){
                 $fields = $data;
+                $input->setOption('fields', $fields);
             }
         }
 
@@ -342,7 +344,6 @@ EOT
 
     private function fieldsFromJsonFile($path)
     {
-        $questionHelper = $this->getQuestionHelper();
         if (!file_exists($path)) {
             return false;
         }
@@ -352,7 +353,6 @@ EOT
         } catch(\Exception $e){
             return false;
         }
-
         return $data;
     }
 
@@ -366,8 +366,8 @@ EOT
         $field['ormType'] = 'string';
 
         if(in_array($type, ['number', 'float'])){
-            $field['varType'] = 'number';
-            $field['ormType'] = 'number';
+            $field['varType'] = 'float';
+            $field['ormType'] = 'float';
         }
 
         if($type === 'text'){

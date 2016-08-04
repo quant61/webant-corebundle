@@ -47,7 +47,7 @@ class {{ bundle_basename }} {
     /**
     * @var {{ field.varType }}
     *
-    * @ORM\Column(name="{{ field.name }}", type="{{ field.ormType }}", nullable={{ field.nullable }})
+    * @ORM\Column(name="{{ field.name }}", type="{{ field.ormType }}", nullable={{ field.nullable?'true':'false' }})
     * @Groups({"get{{ bundle_basename }}"})
     */
     protected ${{ field.name }};

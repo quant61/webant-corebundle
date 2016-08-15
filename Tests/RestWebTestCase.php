@@ -49,7 +49,6 @@ abstract class RestWebTestCase extends WebTestCase
         $this->client           = static::createClient();
         $this->entityCollection = $this->loadFixtureFiles($this->getFixtures());
 
-
         foreach ($this->entityCollection as $obj) {
             $this->entityValue[get_class($obj)][] = $obj;
         }
@@ -57,7 +56,18 @@ abstract class RestWebTestCase extends WebTestCase
         if(!empty($this->className) && !empty($this->entityValue[$this->className])){
             $this->firstEntity = $this->entityValue[$this->className][0];
         }
+//        $this->client->setServerParameter()
+    }
 
+
+    public function logIn($token_id)
+    {
+        $this->access_token = $this->entityCollection[$token_id]->getToken();
+    }
+
+    public function logOut()
+    {
+        $this->access_token = null;
     }
 
     public function getFixtures()
@@ -92,15 +102,19 @@ abstract class RestWebTestCase extends WebTestCase
     {
         $route = $this->getUrl($url, $param);
 
-        if (is_null($obj)) {
-            $this->client->request($method, $route);
+        $params  = [];
+        $server  = ['CONTENT_TYPE' => 'application/json'];
+        $files   = [];
+        $content = [];
 
-        } else {
-            $this->client->request($method, $route, [],
-                [],
-                ['CONTENT_TYPE' => 'application/json'],
-                json_encode($obj));
+        if(isset($this->access_token)){
+            $server['HTTP_Authorization'] = "Bearer ".($this->access_token);
         }
+        if(isset($obj)){
+            $content = json_encode($obj);
+        }
+
+        $this->client->request($method, $route, $params, $files, $server, $content);
         $response = $this->client->getResponse();
         $this->assertJsonResponse($response, $code);
 

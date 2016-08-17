@@ -29,9 +29,6 @@ namespace WebAnt\CoreBundle\Component;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use WebAnt\CoreBundle\Component\Helpers;
 
-
-
-
 class QueryBuilders
 {
     /** @var $good */
@@ -59,6 +56,7 @@ class QueryBuilders
         $em = $kernel->getContainer()->get('doctrine')->getManager();
         /** @var $em \Doctrine\ORM\EntityManager */
 
+
         $this->dataQuery = $em->createQueryBuilder();
         $this->countQuery = $em->createQueryBuilder();
 
@@ -71,9 +69,13 @@ class QueryBuilders
             $this->appendSearch($search);
         }
 
-
     }
 
+    /**
+     * @param string $objectClass - object class of requested object
+     * @param string $alias - alias of object for using in DQL
+     * @return $this
+     */
     public function setObjectClass($objectClass, $alias = 'x'){
         $this->objectClass = $objectClass;
         $this->alias = $alias;
@@ -82,9 +84,17 @@ class QueryBuilders
         $this->dataQuery->from($objectClass, $alias);
         $this->countQuery->select("count($alias) as num");
         $this->countQuery->from($objectClass, $alias);
+        return $this;
     }
 
-
+    /**
+     * @param array $search search array
+     * @param array $config = [
+     *   'objectClass' => class of requested entity(usable if search by subobject's properties)
+     *   'alias' => alias of object (if search by subobject)
+     * ]
+     * @return $this
+     */
     public function appendSearch($search, $config = []){
 
         $defaults = [
@@ -104,6 +114,7 @@ class QueryBuilders
         if(is_numeric($limit)){
             $this->dataQuery->setMaxResults( (int)$limit );
         }
+        return $this;
     }
 
     // example: $queryBuilders->modify('andWhere', ['x.id > 500']);
@@ -116,16 +127,18 @@ class QueryBuilders
      * @param string $func - function name
      * @param array $args - arguments passed to the function
      *
+     * @return $this
      */
     public function modify($func, $args = []){
         call_user_func_array(array($this->dataQuery, $func), $args);
         call_user_func_array(array($this->countQuery, $func), $args);
+        return $this;
     }
 
 
     /**
      * execute queries
-     * @return mixed
+     * @return array
      */
     public function exec(){
         $start = microtime(true);

@@ -9,6 +9,7 @@
 
 namespace WebAnt\CoreBundle\Controller;
 
+use WebAnt\CoreBundle\Component\Helpers;
 use WebAnt\CoreBundle\Util\CamelCase;
 use Doctrine\Common\Persistence\ObjectRepository;
 use Doctrine\ORM\EntityManager;
@@ -24,6 +25,8 @@ abstract class AbstractController extends FOSRestController
     protected $objectClass;
     protected $objectKey = 'id';
 
+    const DEFAULT_COUNT = 25;
+    
     /**
      * Создание обьекта
      *
@@ -96,6 +99,10 @@ abstract class AbstractController extends FOSRestController
 
         $start = $qb->getFirstResult();
         $limit = $qb->getMaxResults();
+        if($limit < 1) {
+            $limit = INF;
+        };
+
         $page  = 1 + $start / $limit;
 
         $begin = microtime(true);
@@ -107,6 +114,44 @@ abstract class AbstractController extends FOSRestController
         $response['_time'] = microtime(true) - $begin;
         return $response;
     }
+
+    /**
+     * extended version of $em->createQueryBuilder
+     * it can use current objectClass of controller and append search on the start
+     *
+     * @param array $config
+     * @return \Doctrine\ORM\QueryBuilder
+     */
+    public function createQueryBuilder($config = []){
+        $objectClass = Helpers::getKeyIfExists($config, 'objectClass', $this->objectClass);
+        $alias       = Helpers::getKeyIfExists($config, 'alias'      , 'x');
+        $search      = Helpers::getKeyIfExists($config, 'search'     ,  []);
+
+        if($search instanceof Request){
+            $search = $search->query->all();
+        }
+
+        $start = (int)Helpers::getKeyIfExists($search, 'start', 0);
+        $limit = (int)Helpers::getKeyIfExists($search, 'limit', self::DEFAULT_COUNT);
+
+        $em = $this->getDoctrine()->getManager();
+        /** @var \Doctrine\ORM\QueryBuilder $qb */
+        $qb = $em->createQueryBuilder();
+
+        $qb->select($alias);
+        $qb->from($objectClass, $alias);
+        $qb->setFirstResult($start);
+        $qb->setMaxResults($limit);
+
+        Helpers::appendSearchToQueryBuilder($qb, $search, [
+            'alias' => $alias,
+            'objectClass' => $objectClass
+        ]);
+
+        return $qb;
+    }
+
+
 
     /**
      * Получить список объектов

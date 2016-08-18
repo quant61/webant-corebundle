@@ -29,6 +29,14 @@ namespace WebAnt\CoreBundle\Component;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use WebAnt\CoreBundle\Component\Helpers;
 
+/**
+ * Class QueryBuilders
+ * @deprecated use getPaginatedList instead;
+ *             knp_paginator do the work this class is designed for
+ *
+ * @package WebAnt\CoreBundle\Component
+ *
+ */
 class QueryBuilders
 {
     /** @var $good */

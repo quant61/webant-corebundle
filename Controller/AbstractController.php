@@ -67,7 +67,13 @@ abstract class AbstractController extends FOSRestController
         return $object;
     }
 
-    // TODO: move to helpers
+    /**
+     * @deprecated use Helpers::getKeyIfExists
+     * @param $array
+     * @param $key
+     * @param null $default
+     * @return null
+     */
     public function getKeyIfExists($array, $key, $default = null){
         // missing key is casted to default, but null key isn't
         if(array_key_exists($key, $array)){
@@ -75,7 +81,33 @@ abstract class AbstractController extends FOSRestController
         }
         return $default;
     }
-    
+
+    /**
+     * get paginated list from queryBuilder
+     *
+     * @param \Doctrine\ORM\QueryBuilder $qb
+     * @return mixed
+     */
+    public function getPaginatedList(\Doctrine\ORM\QueryBuilder $qb){
+        /** @var \Knp\Component\Pager\Paginator $paginator */
+        /** @var \Knp\Bundle\PaginatorBundle\Pagination\SlidingPagination $pagination */
+        /** @var \Doctrine\ORM\QueryBuilder $qb */
+        $paginator  = $this->get('knp_paginator');
+
+        $start = $qb->getFirstResult();
+        $limit = $qb->getMaxResults();
+        $page  = 1 + $start / $limit;
+
+        $begin = microtime(true);
+        $pagination = $paginator->paginate($qb, $page, $limit);
+
+        $response['items'] = $pagination->getItems();
+        $response['count'] = $pagination->getPaginationData()['totalCount'];
+
+        $response['_time'] = microtime(true) - $begin;
+        return $response;
+    }
+
     /**
      * Получить список объектов
      *

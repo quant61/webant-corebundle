@@ -13,7 +13,8 @@
         "doctrine/doctrine-bundle": "~1.2",
         "friendsofsymfony/rest-bundle": "~1.4",
         "jms/serializer": "~0.16",
-        "jms/serializer-bundle": "~0.13"
+        "jms/serializer-bundle": "~0.13",
+        "knplabs/knp-paginator-bundle": "^2.5"
     },
     "require-dev": {
 		"phpunit/phpunit": "~4.5",

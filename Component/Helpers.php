@@ -7,10 +7,13 @@
 
 namespace WebAnt\CoreBundle\Component;
 
+use Symfony\Component\HttpFoundation\Request;
 
 class Helpers{
 
     /**
+     * get array key if it exists else return default value(null)
+     *
      * @param array $array
      * @param string $key
      * @param mixed $default
@@ -24,6 +27,16 @@ class Helpers{
         return $default;
     }
 
+    /**
+     * append search from array to queryBuilder
+     *
+     * @param QueryBuilder $qb
+     * @param array|Request $search - search conditions
+     * @param array $config
+     *
+     * @return mixed
+     *
+     */
     public static function appendSearchToQueryBuilder($qb, $search, $config){
 
         $alias = $config['alias'];
@@ -41,9 +54,6 @@ class Helpers{
         $objectClass = $config['objectClass'];
         $reflect = new \ReflectionClass($objectClass);
         $properties = $reflect->getProperties();
-
-
-
 
         foreach ($properties as $property) {
             $propertyName = $property->getName();

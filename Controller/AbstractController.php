@@ -544,16 +544,19 @@ abstract class AbstractController extends FOSRestController
      * Получить отображание из группы $group
      *
      * @param   object $object
-     * @param   string $group
+     * @param   string|array $groups
      *
-     * @return  view
+     * @return \FOS\RestBundle\View\View
      *
      */
-    public function getObjectGroup($object, $group)
+    public function getObjectGroup($object, $groups)
     {
+        if(is_string($groups)){
+            $groups = [$groups];
+        }
         $view    = $this->view();
         $context = SerializationContext::create()->enableMaxDepthChecks();
-        $context->setGroups([$group]);
+        $context->setGroups($groups);
         $view->setSerializationContext($context);
         $view->setData($object);
 

@@ -20,6 +20,9 @@ class Helpers{
      * @return mixed
      */
     public static function getKeyIfExists($array, $key, $default = null){
+        if(!is_array($array)){
+            return $default;
+        }
         // missing key is casted to default, but null key isn't
         if(array_key_exists($key, $array)){
             return $array[$key];
@@ -86,16 +89,30 @@ class Helpers{
                 }
             } // end if exist
 
+
+            $orderPropertyName = $fullPropertyName;
+            // fix $orderPropertyName if type is object else 500
+            if(in_array($propertyName, [$orderby, $orderbydesc])){
+                preg_match('/@var\s+([^\s]+)/', $property->getDocComment(), $matches);
+                $type = self::getKeyIfExists($matches, 1);
+                if(substr($type, 0, 1) == '\\'){ // if complex type
+                    $orderPropertyName = "order__${alias}__${propertyName}";
+                    $qb->addSelect("IDENTITY($fullPropertyName) as HIDDEN $orderPropertyName");
+                };
+            }
+
             if ($orderby == $propertyName) {
-                $qb->orderBy("$fullPropertyName", 'ASC');
+                $qb->orderBy("$orderPropertyName", 'ASC');
             } elseif ($orderbydesc == $propertyName) {
-                $qb->orderBy("$fullPropertyName", 'DESC');
+                $qb->orderBy("$orderPropertyName", 'DESC');
             }
         } // end foreach possible properties
 
         return $qb;
 
     }
+
+
 
 
 

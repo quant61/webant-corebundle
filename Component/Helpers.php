@@ -95,7 +95,7 @@ class Helpers{
             if(in_array($propertyName, [$orderby, $orderbydesc])){
                 preg_match('/@var\s+([^\s]+)/', $property->getDocComment(), $matches);
                 $type = self::getKeyIfExists($matches, 1);
-                if(substr($type, 0, 1) == '\\'){ // if complex type
+                if(substr($type, 0, 1) == '\\' && $type !== '\\DateTime'){ // if complex type
                     $orderPropertyName = "order__${alias}__${propertyName}";
                     $qb->addSelect("IDENTITY($fullPropertyName) as HIDDEN $orderPropertyName");
                 };

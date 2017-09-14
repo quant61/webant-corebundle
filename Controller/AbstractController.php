@@ -22,8 +22,13 @@ use JMS\Serializer\SerializationContext;
 
 abstract class AbstractController extends FOSRestController
 {
+    // TODO: rename to currentObjectClass
+    // TODO: don't use it too much, don't change it in controllers.
+    // TODO: improve code in projects to make them useless
     protected $objectClass;
     protected $objectKey = 'id';
+
+    protected $currentManager;
 
     const DEFAULT_COUNT = 25;
     
@@ -36,7 +41,7 @@ abstract class AbstractController extends FOSRestController
      */
     public function createObject($requestArray)
     {
-        $em     = $this->getDoctrine()->getManager();
+        $em     = $this->getDoctrine()->getManager($this->currentManager);
         $object = $this->arrayToObject($requestArray);
 
         try {
@@ -134,7 +139,7 @@ abstract class AbstractController extends FOSRestController
         $start = (int)Helpers::getKeyIfExists($search, 'start', 0);
         $limit = (int)Helpers::getKeyIfExists($search, 'limit', self::DEFAULT_COUNT);
 
-        $em = $this->getDoctrine()->getManager();
+        $em = $this->getDoctrine()->getManager($this->currentManager);
         /** @var \Doctrine\ORM\QueryBuilder $qb */
         $qb = $em->createQueryBuilder();
 
@@ -171,7 +176,7 @@ abstract class AbstractController extends FOSRestController
         $limit      = null;
         $offset     = null;
 
-        $em         = $this->getDoctrine()->getManager();
+        $em         = $this->getDoctrine()->getManager($this->currentManager);
         $countQuery = $em->createQueryBuilder();
         $countQuery->select('count(x) as num');
         $countQuery->from($this->objectClass, 'x');
@@ -247,7 +252,7 @@ abstract class AbstractController extends FOSRestController
         $afterFunction = null
     ) {
 
-        $em         = $this->getDoctrine()->getManager();
+        $em         = $this->getDoctrine()->getManager($this->currentManager);
         $repository = $this->getObjectRepository();
 
         if (is_string($this->objectKey)) {
@@ -301,7 +306,7 @@ abstract class AbstractController extends FOSRestController
         $beforeFunction = null,
         $afterFunction = null
     ) {
-        $em         = $this->getDoctrine()->getManager();
+        $em         = $this->getDoctrine()->getManager($this->currentManager);
         $repository = $this->getObjectRepository();
 
         if (is_string($this->objectKey)) {
@@ -358,7 +363,7 @@ abstract class AbstractController extends FOSRestController
         $beforeFunction = null,
         $afterFunction = null
     ) {
-        $em           = $this->getDoctrine()->getManager();
+        $em           = $this->getDoctrine()->getManager($this->currentManager);
         $repository   = $this->getObjectRepository();
         $findFunction = 'findOneBy' . ucfirst($this->objectKey);// Зачем конкатанация objectKey ?
         $object       = $repository->$findFunction((int)$keyValue);
@@ -416,7 +421,7 @@ abstract class AbstractController extends FOSRestController
             throw new HttpException(400, 'Error object create');
         }
 
-        $em         = $this->getDoctrine()->getManager();
+        $em         = $this->getDoctrine()->getManager($this->currentManager);
         $reflect    = new \ReflectionClass($this->objectClass);
         $namespace  = $reflect->getNamespaceName();
         $properties = $reflect->getProperties();
@@ -428,6 +433,7 @@ abstract class AbstractController extends FOSRestController
         //устанавливаем значения
         foreach ($properties as $property) {
             $propertyName = CamelCase::fromCamelCase($property->getName());
+
             if(!array_key_exists($propertyName, $requestArray)){
                 continue;
             }
@@ -573,7 +579,7 @@ abstract class AbstractController extends FOSRestController
         /**
          * @var EntityManager
          */
-        $em = $this->getDoctrine()->getManager();
+        $em = $this->getDoctrine()->getManager($this->currentManager);
 
         return $em->getRepository($this->objectClass);
     }

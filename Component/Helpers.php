@@ -112,10 +112,42 @@ class Helpers{
 
     }
 
+    /**
+     * fixes date input
+     * - converts date to server's timezone
+     * - supports both DateTime and DateTimeImmutable objects
+     * - supports strings supported by DateTime constructor
+     * - supports and treats numbers as unix timestamps
+     * - return false for invalid values
+     *
+     * @param string|int|float|\DateTimeInterface $date
+     * @return bool|\DateTime|null
+     */
+    public static function fixDate($date){
+        $fixedDate = null;
+        $tzName = date_default_timezone_get();
+        $timeZone = new \DateTimeZone($tzName);
 
-
-
-
+        if(is_string($date)){
+            try {
+                $fixedDate = new \DateTime($date);
+                // force current timezone
+                $fixedDate->setTimezone($timeZone);
+            } catch (\Exception $e) {
+                $fixedDate = false;
+            }
+        } else if(is_integer($date) || is_float($date)){
+            $timestamp = floor($date);
+            $fixedDate = new \DateTime("@$timestamp");
+        } else if($date instanceof \DateTimeInterface){
+            // force timezone and support both mutable and immutable
+            $timestamp = $date->format('U');
+            $fixedDate = new \DateTime("@$timestamp");
+        } else {
+            $fixedDate = false;
+        }
+        return $fixedDate;
+    }
 
 
 }

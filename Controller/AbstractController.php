@@ -455,8 +455,12 @@ abstract class AbstractController extends FOSRestController
                     $property->setValue($object, $value);
                 }
 
-                if ($type == '\DateTime' && !is_null($value) && !is_object($value)) {
-                    $value = new \DateTime($value);
+                if ($type == '\DateTime' && !is_null($value)) {
+                    // TODO: don't force server timezone if DateTimeTzType is used
+                    $fixedDate = Helpers::fixDate($value);
+                    if($fixedDate){
+                        $value = $fixedDate;
+                    }
                 }
 
                 /**

@@ -12,3 +12,9 @@ services:
         tags :
             -  {  name :  kernel.event_listener  ,  event :  kernel.exception  }
             -  {  name :  kernel.event_listener  ,  event :  kernel.response  }
+
+    app.database:
+        class: WebAnt\CoreBundle\Services\DatabaseService
+        arguments:
+            - "@doctrine.orm.entity_manager"
+

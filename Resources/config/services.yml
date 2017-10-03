@@ -4,7 +4,7 @@ services:
         tags:
             -  { name: console.command }
 
-    app.log :
+    webant.core.log :
         class :  WebAnt\CoreBundle\EventListener\LogListener
         arguments:
             - "@security.token_storage"
@@ -13,7 +13,7 @@ services:
             -  {  name :  kernel.event_listener  ,  event :  kernel.exception  }
             -  {  name :  kernel.event_listener  ,  event :  kernel.response  }
 
-    app.database:
+    webant.core.database:
         class: WebAnt\CoreBundle\Services\DatabaseService
         arguments:
             - "@doctrine.orm.entity_manager"

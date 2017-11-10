@@ -159,7 +159,7 @@ class DatabaseService
             }
 
             if($fieldMetaData['isPrimitive']){
-                if($fieldMetaData['nullable'] && is_null($value)){
+                if(is_null($value) && @$fieldMetaData['nullable']){
                     $setter(null);
                 }
                 $type = $fieldMetaData['type'];

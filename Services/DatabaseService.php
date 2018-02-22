@@ -119,6 +119,19 @@ class DatabaseService
         return $object;
     }
 
+    /**
+     * @param object|array $object
+     * @throws \Doctrine\ORM\OptimisticLockException
+     */
+    public function deleteObject($object){
+        if(is_array($object)){
+            $object = call_user_func_array([$this, 'getObject'], $object);
+        }
+
+        $this->em->remove($object);
+        $this->em->flush($object);
+    }
+
 
     /**
      * @param object|string $object - object to update or className to create

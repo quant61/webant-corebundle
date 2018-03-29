@@ -4,14 +4,14 @@ services:
         tags:
             -  { name: console.command }
 
-    webant.core.log :
-        class :  WebAnt\CoreBundle\EventListener\LogListener
-        arguments:
-            - "@security.token_storage"
-            - "@doctrine.orm.entity_manager"
-        tags :
-            -  {  name :  kernel.event_listener  ,  event :  kernel.exception  }
-            -  {  name :  kernel.event_listener  ,  event :  kernel.response  }
+#    webant.core.log :
+#        class :  WebAnt\CoreBundle\EventListener\LogListener
+#        arguments:
+#            - "@security.token_storage"
+#            - "@doctrine.orm.entity_manager"
+#        tags :
+#            -  {  name :  kernel.event_listener  ,  event :  kernel.exception  }
+#            -  {  name :  kernel.event_listener  ,  event :  kernel.response  }
 
     webant.core.database:
         class: WebAnt\CoreBundle\Services\DatabaseService

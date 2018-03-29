@@ -15,6 +15,12 @@ use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInt
 use WebAnt\CoreBundle\Entity\QueryLogs;
 use Doctrine\ORM\EntityManager;
 
+/**
+ * do we need this?
+ * delete it?
+ * Class LogListener
+ * @package WebAnt\CoreBundle\EventListener
+ */
 class LogListener
 {
     protected $token_storage;

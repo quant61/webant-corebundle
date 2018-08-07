@@ -142,7 +142,8 @@ class Helpers{
         } else if($date instanceof \DateTimeInterface){
             // force timezone and support both mutable and immutable
             $timestamp = $date->format('U');
-            $fixedDate = new \DateTime("@$timestamp");
+            $fixedDate = new \DateTime();
+            $fixedDate->setTimestamp($timestamp);
         } else {
             $fixedDate = false;
         }

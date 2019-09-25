@@ -138,7 +138,8 @@ class Helpers{
             }
         } else if(is_integer($date) || is_float($date)){
             $timestamp = floor($date);
-            $fixedDate = new \DateTime("@$timestamp");
+            $fixedDate = new \DateTime();
+            $fixedDate->setTimestamp((int)$date);
         } else if($date instanceof \DateTimeInterface){
             // force timezone and support both mutable and immutable
             $timestamp = $date->format('U');
